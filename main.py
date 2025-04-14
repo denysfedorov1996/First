@@ -49,27 +49,48 @@ def test():
 def check_kleinanzeigen():
     url = 'https://www.kleinanzeigen.de/s-63450/zu-verschenken/k0l4285r16'
     headers = {'User-Agent': 'Mozilla/5.0'}
+    
+    # Отправляем запрос и проверяем статус
     response = requests.get(url, headers=headers)
+    print(f"Статус ответа: {response.status_code}")  # Отладка
+
+    # Если статус не 200, прерываем выполнение
+    if response.status_code != 200:
+        print("Ошибка: не удалось загрузить страницу.")
+        return
+
+    # Парсим страницу
     soup = BeautifulSoup(response.text, 'html.parser')
 
+    # Находим все объявления
     items = soup.select('article.aditem')
+    print(f"Найдено объявлений: {len(items)}")  # Отладка
+
     for item in items:
         title_tag = item.select_one('.ellipsis')
         link_tag = item.select_one('a')
+
+        # Если нет заголовка или ссылки, пропускаем
         if not title_tag or not link_tag:
             continue
 
         title = title_tag.get_text(strip=True).lower()
         link = 'https://www.kleinanzeigen.de' + link_tag['href']
 
+        print(f"Обрабатываем объявление: {title} ({link})")  # Отладка
+
+        # Пропускаем уже отправленные ссылки
         if link in sent_links:
+            print(f"Пропускаем уже отправленную ссылку: {link}")  # Отладка
             continue
 
+        # Проверяем на ключевые слова
         if any(keyword in title for keyword in KEYWORDS):
             message = f"Neue Anzeige gefunden:\n{title}\n{link}"
             try:
                 bot.send_message(chat_id=int(TELEGRAM_CHAT_ID), text=message)
                 sent_links.add(link)
+                print(f"Отправлено сообщение: {message}")  # Отладка
             except Exception as e:
                 print("Ошибка при отправке в Telegram:", e)
 
