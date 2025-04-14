@@ -2,9 +2,10 @@ import requests
 from bs4 import BeautifulSoup
 import time
 import os
-import telegram
-from flask import Flask
+from telegram import Bot, Update
+from telegram.ext import Application, CommandHandler, ContextTypes
 import threading
+import asyncio
 
 # Получаем токены из переменных окружения
 TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
@@ -25,28 +26,18 @@ KEYWORDS = [
 ]
 
 sent_links = set()
-bot = telegram.Bot(token=TELEGRAM_TOKEN)
-app = Flask(__name__)
+bot = Bot(token=TELEGRAM_TOKEN)
 
-@app.route('/')
-def index():
-    return "Server is running!"
-
-@app.route('/ping')
-def ping():
-    check_kleinanzeigen()
-    return "Ping received"
-
-@app.route('/test')
-def test():
+# Функция для отправки сообщений в Telegram
+async def send_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     try:
-        bot.send_message(chat_id=int(TELEGRAM_CHAT_ID), text="Привет! Это тестовое сообщение от Kleinanzeigen-бота.")
-        return "Тестовое сообщение отправлено!"
+        await update.message.reply("Привет! Это тестовое сообщение от Kleinanzeigen-бота.")
     except Exception as e:
-        return f"Ошибка при отправке сообщения: {e}"
+        print(f"Ошибка при отправке сообщения: {e}")
 
 # Функция проверки сайта
-def check_kleinanzeigen():
+async def check_kleinanzeigen():
+    print("Проверка новых объявлений...")  # Отладка
     url = 'https://www.kleinanzeigen.de/s-63450/zu-verschenken/k0l4285r16'
     headers = {'User-Agent': 'Mozilla/5.0'}
     
@@ -88,26 +79,36 @@ def check_kleinanzeigen():
         if any(keyword in title for keyword in KEYWORDS):
             message = f"Neue Anzeige gefunden:\n{title}\n{link}"
             try:
-                bot.send_message(chat_id=int(TELEGRAM_CHAT_ID), text=message)
+                await bot.send_message(chat_id=TELEGRAM_CHAT_ID, text=message)
                 sent_links.add(link)
                 print(f"Отправлено сообщение: {message}")  # Отладка
             except Exception as e:
                 print("Ошибка при отправке в Telegram:", e)
 
 # Поток проверки каждые 60 секунд
-def run_checker():
+async def run_checker():
+    print("Запуск проверки каждые 60 секунд...")  # Отладка
     while True:
         try:
-            check_kleinanzeigen()
+            await check_kleinanzeigen()
         except Exception as e:
-            print("Ошибка в функции проверки:", e)
-        time.sleep(60)
+            print(f"Ошибка в функции проверки: {e}")
+        await asyncio.sleep(60)
+
+# Основная асинхронная функция для запуска бота и проверки
+async def main():
+    # Настроим бота с использованием новой версии библиотеки
+    application = Application.builder().token(TELEGRAM_TOKEN).build()
+
+    # Обработчик для команды /test
+    application.add_handler(CommandHandler("test", send_message))
+
+    # Запуск фоновой проверки
+    asyncio.create_task(run_checker())
+
+    # Запуск бота
+    await application.run_polling()
 
 if __name__ == '__main__':
-    # Запускаем фоновый поток
-    checker_thread = threading.Thread(target=run_checker)
-    checker_thread.daemon = True
-    checker_thread.start()
-
-    # Запускаем Flask-сервер
-    app.run(host='0.0.0.0', port=8080)
+    # Запуск асинхронного приложения
+    asyncio.run(main())
