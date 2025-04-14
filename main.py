@@ -102,16 +102,18 @@ def run_checker():
         try:
             check_kleinanzeigen()
         except Exception as e:
-            print(f"Ошибка в функции проверки: {e}")
+            print("Ошибка в функции проверки:", e)
         time.sleep(60)
 
 if __name__ == '__main__':
-    # Запускаем фоновый поток
+    # Получаем порт из переменной окружения (Render указывает порт через переменную окружения PORT)
+    port = int(os.environ.get("PORT", 8080))  # Если переменная окружения не установлена, используем порт 8080
+
+    # Запускаем фоновый поток для проверки Kleinanzeigen
     checker_thread = threading.Thread(target=run_checker)
     checker_thread.daemon = True
     checker_thread.start()
 
-    # Получаем порт из переменной окружения
-    port = int(os.environ.get("PORT", 8080))  # Получаем порт из переменной окружения, если она есть
+    # Запускаем Flask-сервер
     print(f"Запуск Flask-сервера на порту {port}...")  # Отладка
-    app.run(host='0.0.0.0', port=port)  # Указываем порт
+    app.run(host='0.0.0.0', port=port)
