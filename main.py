@@ -44,6 +44,7 @@ def ping():
 
 # Основная функция проверки
 def check_kleinanzeigen():
+    print("Проверка объявлений:", time.strftime("%Y-%m-%d %H:%M:%S"))
     url = 'https://www.kleinanzeigen.de/s-63450/zu-verschenken/k0l4285r16'
     headers = {'User-Agent': 'Mozilla/5.0'}
     response = requests.get(url, headers=headers)
