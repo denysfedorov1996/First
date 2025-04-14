@@ -1,12 +1,17 @@
-import os
 import requests
 from bs4 import BeautifulSoup
 import time
+import os
 import telegram
+from flask import Flask
 
-# Telegram настройки
+# Получаем токены из переменных окружения
 TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
 TELEGRAM_CHAT_ID = os.getenv('TELEGRAM_CHAT_ID')
+
+# Проверка, что токены заданы
+if not TELEGRAM_TOKEN or not TELEGRAM_CHAT_ID:
+    raise ValueError("TELEGRAM_TOKEN или TELEGRAM_CHAT_ID не установлены!")
 
 # Список ключевых слов
 KEYWORDS = [
@@ -25,8 +30,16 @@ sent_links = set()
 # Telegram бот
 bot = telegram.Bot(token=TELEGRAM_TOKEN)
 
+# Flask приложение
+app = Flask(__name__)
+
+@app.route('/')
+def index():
+    return "Server is running!"
+
+# Функция для проверки сайта Kleinanzeigen
 def check_kleinanzeigen():
-    url = 'https://www.kleinanzeigen.de/s-63450/zu-verschenken/k0l4285r16'  # ссылка на сайт с фильтром по городу и категории
+    url = 'https://www.kleinanzeigen.de/s-63450/zu-verschenken/k0l4285r16'
     headers = {'User-Agent': 'Mozilla/5.0'}
     response = requests.get(url, headers=headers)
     soup = BeautifulSoup(response.text, 'html.parser')
@@ -52,11 +65,12 @@ def check_kleinanzeigen():
             except Exception as e:
                 print("Fehler beim Senden an Telegram:", e)
 
+# Пинг функции для Render
+@app.route('/ping')
+def ping():
+    check_kleinanzeigen()  # Проверяем сайт
+    return "Ping received"
+
 if __name__ == '__main__':
-    print("Starte Überwachung...")
-    while True:
-        try:
-            check_kleinanzeigen()
-        except Exception as e:
-            print("Fehler bei der Überprüfung:", e)
-        time.sleep(60)  # интервал 60 секунд
+    # Запуск Flask сервера
+    app.run(host='0.0.0.0', port=8080)
