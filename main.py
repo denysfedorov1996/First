@@ -6,7 +6,7 @@ import telegram
 from flask import Flask
 import threading
 
-# Получаем переменные окружения
+# Получаем токены из переменных окружения
 TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
 TELEGRAM_CHAT_ID = os.getenv('TELEGRAM_CHAT_ID')
 
@@ -24,32 +24,34 @@ KEYWORDS = [
     'tablet', 'ipad', 'android-tablet'
 ]
 
-# Массив уже отправленных ссылок
 sent_links = set()
-
-# Инициализация Telegram-бота
 bot = telegram.Bot(token=TELEGRAM_TOKEN)
-
-# Flask-сервер
 app = Flask(__name__)
 
 @app.route('/')
-def home():
+def index():
     return "Server is running!"
 
 @app.route('/ping')
 def ping():
     check_kleinanzeigen()
-    return "Ping OK"
+    return "Ping received"
 
-# Основная функция проверки
+@app.route('/test')
+def test():
+    try:
+        bot.send_message(chat_id=int(TELEGRAM_CHAT_ID), text="Привет! Это тестовое сообщение от Kleinanzeigen-бота.")
+        return "Тестовое сообщение отправлено!"
+    except Exception as e:
+        return f"Ошибка при отправке сообщения: {e}"
+
+# Функция проверки сайта
 def check_kleinanzeigen():
-    print("Проверка объявлений:", time.strftime("%Y-%m-%d %H:%M:%S"))
     url = 'https://www.kleinanzeigen.de/s-63450/zu-verschenken/k0l4285r16'
     headers = {'User-Agent': 'Mozilla/5.0'}
     response = requests.get(url, headers=headers)
     soup = BeautifulSoup(response.text, 'html.parser')
-    
+
     items = soup.select('article.aditem')
     for item in items:
         title_tag = item.select_one('.ellipsis')
@@ -69,21 +71,22 @@ def check_kleinanzeigen():
                 bot.send_message(chat_id=int(TELEGRAM_CHAT_ID), text=message)
                 sent_links.add(link)
             except Exception as e:
-                print("Fehler beim Senden an Telegram:", e)
+                print("Ошибка при отправке в Telegram:", e)
 
-# Фоновый поток
+# Поток проверки каждые 60 секунд
 def run_checker():
     while True:
         try:
             check_kleinanzeigen()
         except Exception as e:
-            print("Fehler im Checker:", e)
+            print("Ошибка в функции проверки:", e)
         time.sleep(60)
 
-# Точка входа
 if __name__ == '__main__':
+    # Запускаем фоновый поток
     checker_thread = threading.Thread(target=run_checker)
     checker_thread.daemon = True
     checker_thread.start()
 
+    # Запускаем Flask-сервер
     app.run(host='0.0.0.0', port=8080)
