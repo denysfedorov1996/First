@@ -6,7 +6,7 @@ import telegram
 from flask import Flask
 import threading
 
-# Получаем токены из переменных окружения
+# Получаем переменные окружения
 TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
 TELEGRAM_CHAT_ID = os.getenv('TELEGRAM_CHAT_ID')
 
@@ -24,26 +24,31 @@ KEYWORDS = [
     'tablet', 'ipad', 'android-tablet'
 ]
 
+# Массив уже отправленных ссылок
 sent_links = set()
+
+# Инициализация Telegram-бота
 bot = telegram.Bot(token=TELEGRAM_TOKEN)
+
+# Flask-сервер
 app = Flask(__name__)
 
 @app.route('/')
-def index():
+def home():
     return "Server is running!"
 
 @app.route('/ping')
 def ping():
     check_kleinanzeigen()
-    return "Ping received"
+    return "Ping OK"
 
-# Функция проверки
+# Основная функция проверки
 def check_kleinanzeigen():
     url = 'https://www.kleinanzeigen.de/s-63450/zu-verschenken/k0l4285r16'
     headers = {'User-Agent': 'Mozilla/5.0'}
     response = requests.get(url, headers=headers)
     soup = BeautifulSoup(response.text, 'html.parser')
-
+    
     items = soup.select('article.aditem')
     for item in items:
         title_tag = item.select_one('.ellipsis')
@@ -65,7 +70,7 @@ def check_kleinanzeigen():
             except Exception as e:
                 print("Fehler beim Senden an Telegram:", e)
 
-# Поток проверки каждые 60 секунд
+# Фоновый поток
 def run_checker():
     while True:
         try:
@@ -74,11 +79,10 @@ def run_checker():
             print("Fehler im Checker:", e)
         time.sleep(60)
 
+# Точка входа
 if __name__ == '__main__':
-    # Запускаем фоновый поток
     checker_thread = threading.Thread(target=run_checker)
     checker_thread.daemon = True
     checker_thread.start()
 
-    # Запускаем Flask
     app.run(host='0.0.0.0', port=8080)
