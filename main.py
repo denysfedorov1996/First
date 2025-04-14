@@ -3,7 +3,7 @@ from bs4 import BeautifulSoup
 import time
 import os
 import telegram
-from telegram.ext import Updater, CommandHandler
+from flask import Flask
 import threading
 
 # Получаем токены из переменных окружения
@@ -26,13 +26,24 @@ KEYWORDS = [
 
 sent_links = set()
 bot = telegram.Bot(token=TELEGRAM_TOKEN)
+app = Flask(__name__)
 
-# Функция для отправки сообщений в Telegram
-def send_message(update, context):
+@app.route('/')
+def index():
+    return "Server is running!"
+
+@app.route('/ping')
+def ping():
+    check_kleinanzeigen()
+    return "Ping received"
+
+@app.route('/test')
+def test():
     try:
-        context.bot.send_message(chat_id=TELEGRAM_CHAT_ID, text="Привет! Это тестовое сообщение от Kleinanzeigen-бота.")
+        bot.send_message(chat_id=int(TELEGRAM_CHAT_ID), text="Привет! Это тестовое сообщение от Kleinanzeigen-бота.")
+        return "Тестовое сообщение отправлено!"
     except Exception as e:
-        print(f"Ошибка при отправке сообщения: {e}")
+        return f"Ошибка при отправке сообщения: {e}"
 
 # Функция проверки сайта
 def check_kleinanzeigen():
@@ -78,7 +89,7 @@ def check_kleinanzeigen():
         if any(keyword in title for keyword in KEYWORDS):
             message = f"Neue Anzeige gefunden:\n{title}\n{link}"
             try:
-                bot.send_message(chat_id=TELEGRAM_CHAT_ID, text=message)
+                bot.send_message(chat_id=int(TELEGRAM_CHAT_ID), text=message)
                 sent_links.add(link)
                 print(f"Отправлено сообщение: {message}")  # Отладка
             except Exception as e:
@@ -94,22 +105,13 @@ def run_checker():
             print(f"Ошибка в функции проверки: {e}")
         time.sleep(60)
 
-# Основная функция для запуска бота
-def main():
-    updater = Updater(TELEGRAM_TOKEN, use_context=True)
-    dispatcher = updater.dispatcher
-
-    # Обработчик для команды /test
-    dispatcher.add_handler(CommandHandler("test", send_message))
-
-    # Запуск фоновой проверки
+if __name__ == '__main__':
+    # Запускаем фоновый поток
     checker_thread = threading.Thread(target=run_checker)
     checker_thread.daemon = True
     checker_thread.start()
 
-    # Запуск бота
-    updater.start_polling()
-    updater.idle()
-
-if __name__ == '__main__':
-    main()
+    # Получаем порт из переменной окружения
+    port = int(os.environ.get("PORT", 8080))  # Получаем порт из переменной окружения, если она есть
+    print(f"Запуск Flask-сервера на порту {port}...")  # Отладка
+    app.run(host='0.0.0.0', port=port)  # Указываем порт
