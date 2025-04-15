@@ -49,7 +49,16 @@ def test():
 def check_kleinanzeigen():
     print("Проверка новых объявлений...")  # Отладка
     url = 'https://www.kleinanzeigen.de/s-63450/zu-verschenken/k0l4285r16'
-    headers = {'User-Agent': 'Mozilla/5.0'}
+    headers = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+                  'AppleWebKit/537.36 (KHTML, like Gecko) '
+                  'Chrome/122.0.0.0 Safari/537.36',
+    'Accept-Language': 'de-DE,de;q=0.9,en;q=0.8',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+    'Referer': 'https://www.google.com/',
+    'DNT': '1',
+    'Connection': 'keep-alive'
+}
     
     # Отправляем запрос и проверяем статус
     response = requests.get(url, headers=headers)
