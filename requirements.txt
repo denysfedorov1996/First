@@ -1,4 +1,4 @@
-flask
+Flask==2.3.3
+python-telegram-bot==3.15.0
 beautifulsoup4
 requests
-python-telegram-bot==13.15
